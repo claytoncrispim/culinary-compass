@@ -1,0 +1,15 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <!-- Background Circle -->
+    <circle cx="128" cy="128" r="120" fill="#FDE68A"/> 
+    <!-- Compass Outer Ring -->
+    <circle cx="128" cy="128" r="100" fill="none" stroke="#78350F" stroke-width="12"/>
+    <!-- Fork -->
+    <path d="M110 90 V160 M110 90 C110 70, 95 60, 95 60 M110 90 C110 70, 125 60, 125 60 M110 90 C110 70, 110 60, 110 60" stroke="#78350F" stroke-width="10" stroke-linecap="round"/>
+    <!-- Knife -->
+    <path d="M146 160 V 60 L 160 70 V 160" fill="#78350F"/>
+    <!-- Compass Markings -->
+    <line x1="128" y1="48" x2="128" y2="68" stroke="#78350F" stroke-width="8" stroke-linecap="round"/>
+    <line x1="128" y1="188" x2="128" y2="208" stroke="#78350F" stroke-width="8" stroke-linecap="round"/>
+    <line x1="48" y1="128" x2="68" y2="128" stroke="#78350F" stroke-width="8" stroke-linecap="round"/>
+    <line x1="188" y1="128" x2="208" y2="128" stroke="#78350F" stroke-width="8" stroke-linecap="round"/>
+</svg>
