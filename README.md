@@ -44,8 +44,9 @@ To run this project locally, follow these steps:
 1. Clone the repository:
 
 ```sh
-git clone [https://github.com/claytoncrispim/culinary-compass.git](https://github.com/claytoncrispim/culinary-compass.git)
-    
+git clone https://github.com/claytoncrispim/culinary-compass.git
+```
+```sh    
 cd culinary-compass
 ```
 2. Install dependencies:
