@@ -1,13 +1,14 @@
 # 🧭 Culinary Compass - Your AI Food & Travel Guide
 
-## Screenshot
-![Screenshot of the application page containing an AI Generated image of a dish, and the location's relevant culinary information.](src/assets/screenshot.png)
 
 **[➡️ Live Demo Link Here](https://claytoncrispim.github.io/culinary-compass/)**
 
 An intelligent web application that serves as a personal guide to the world's culinary landscape. Powered by Google's Gemini and Imagen 3 AI models, users can enter any city or country and instantly receive a curated food guide, complete with an AI-generated image of a signature dish.
 
-A screenshot showing a culinary guide for a location, including must-try dishes and an AI-generated image.
+## 📷 Screenshot
+![A screenshot showing a culinary guide for a location, including must-try dishes and an AI-generated image.](src/assets/screenshot.png)
+
+
 
 ## ✨ Features
 
