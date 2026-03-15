@@ -1,34 +1,18 @@
 import dotenv from "dotenv";
 dotenv.config();
-import stripCodeFences from "./utils/stripCodeFences.js";
-import safeModel from "./utils/safeModel.js";
 import express from "express";
 import cors from "cors";
+import { GoogleAuth } from "google-auth-library";
+import fetch from "node-fetch";
+
+import { apiError, asyncHandler } from "./utils/http.js";
+import GUIDE_SCHEMA from "./constants/guideSchema.js";
+import stripCodeFences from "./utils/stripCodeFences.js";
+import safeModel from "./utils/safeModel.js";
+
 
 const PORT = process.env.PORT || 5000;
 const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
-
-// Response schema (Gemini's response will be validated against this schema to ensure it contains the expected fields and types.)
-
-const GUIDE_SCHEMA = {
-      type: 'OBJECT',
-      properties: {
-        locationName: { type: 'STRING' },
-        mustTryDishes: {
-          type: 'ARRAY',
-          items: {
-            type: 'OBJECT',
-            properties: { name: { type: 'STRING' }, description: { type: 'STRING' } },
-            required: ['name', 'description'],
-          },
-        },
-        etiquetteTip: { type: 'STRING' },
-        restaurantSuggestion: { type: 'STRING' },
-        imageGenPrompt: { type: 'STRING', description: 'A detailed, photorealistic prompt for an image generation model.' },
-      },
-      required: ['locationName', 'mustTryDishes', 'etiquetteTip', 'restaurantSuggestion', 'imageGenPrompt'],
-    }
-
 
 safeModel({}) // Example usage of safeModel function to validate model input;
 
@@ -40,6 +24,82 @@ app.use(express.json({ limit: "1mb" }));
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });
 });
+
+const PROJECT_ID = "culinary-compass-app-473814";
+
+/**
+ * POST /api/generate-image
+ * Body: { prompt: string }
+ * Returns: { imageUrl: string }
+ * 
+ * This endpoint receives an image generation prompt from the frontend, calls the Imagen 3 API, and returns a URL to the generated image. It includes error handling for missing API key, invalid prompt, and API request failures. The response from Imagen is expected to contain a base64-encoded image, which is converted to a data URL before being sent back to the frontend.
+ */
+app.post("/api/generate-image", async (req, res) => {
+    const { prompt } = req.body;
+
+    try {
+        // Decide where to get service account credentials based on environment
+        let authOptions;
+
+        if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+            // Production credential from environment variable at Render.com
+            // TODO: Create service and copy backend/service-account.json content into GOOGLE_SERVICE_ACCOUNT_JSON env var on Render.com
+
+            let serviceAccount;
+            try {
+                serviceAccount = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+            } catch (parseErr) {
+                console.error("Failed to parse GOOGLE_SERVICE_ACCOUNT_JSON:", parseErr);
+                throw new Error("SERVICE_ACCOUNT_JSON_PARSE_ERROR");
+            }
+
+            authOptions = {
+                credentials: serviceAccount,
+                projectId: serviceAccount.project_id || PROJECT_ID,
+                scopes: ["https://www.googleapis.com/auth/cloud-platform"],
+            };
+
+            console.log("Using service account credentials from environment variable.");
+
+        } else {
+            // Local development credential from file
+            authOptions = {
+                keyFile: "./service-account.json",
+                scopes: ["https://www.googleapis.com/auth/cloud-platform"],
+            };
+
+            console.log("Using local service-account.json key file.");           
+        }
+
+        const auth = new GoogleAuth(authOptions);
+        const client = await auth.getClient();
+        const accessToken = await client.getAccessToken();
+
+        const response = await fetch(
+            `https://us-central1-aiplatform.googleapis.com/v1/projects/${PROJECT_ID}/locations/us-central1/publishers/google/models/imagen-3.0-generate-002:predict`,
+            {
+                method: "POST",
+                headers: {
+                Authorization: `Bearer ${accessToken.token}`,
+                "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                instances: [{ prompt }],
+                parameters: { sampleCount: 1 },
+                }),
+            }
+        ); 
+        
+        const result = await response.json();
+        res.json(result);
+    } catch (err) {
+        console.error("Imagen backend error:", err);
+        res.status(500).json({ error: err.toString() });
+    }
+});
+
+
+
 
 /**
  * POST /api/get-guide
@@ -120,7 +180,7 @@ app.post("/api/get-guide", async (req, res) => {
             console.error("Backend error:", err);
             return res.status(500).json({ error: "Server error", details: String(err) });
         }
-});      
+});     
 
 // Temporary health check endpoint - verifies if routing is working correctly
 app.get("/_whoami", (req, res) => {
