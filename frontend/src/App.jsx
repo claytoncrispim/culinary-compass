@@ -1,88 +1,67 @@
+// --- IMPORTS ---
 import { useState } from 'react'
+// Importing components
+import LoadingSpinner from '../components/LoadingSpinner'
+import SearchBar from '../components/SearchBar'
+import GuideCard from '../components/GuideCard'
+// Importing utils
+import { fetchWithRetry } from '../utils/fetchWithRetry'
+import { ApiError } from '../utils/ApiError'
+import buildImagePrompt from '../utils/buildImagePrompt'
+import getUserMessage from '../utils/getUserMessage'
 
-// --- UI COMPONENT: LoadingSpinner ---
-// A simple visual indicator to show the user that a process is running.
-const LoadingSpinner = () => (
-  <div className="flex justify-center items-center py-10">
-    <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-amber-600"></div>
-  </div>
-)
 
-// --- UI COMPONENT: ImagePlaceholder ---
-// A placeholder with a pulsing animation shown while the AI image is being generated.
-// This improves user experience by managing expectations.
-const ImagePlaceholder = () => (
-  <div className="bg-stone-200 rounded-lg h-48 sm:h-56 md:h-64 flex items-center justify-center animate-pulse">
-    <p className="text-stone-500">Generating culinary art...</p>
-  </div>
-)
+// --- CONFIGURATION ---
+// Base URL for the backend API
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
-// --- UI COMPONENT: SearchBar ---
-// The main form for user input. It is a controlled component, with its value tied to state.
-const SearchBar = ({ location, setLocation, handleGetGuide, loading }) => (
-  <form onSubmit={handleGetGuide} className="flex gap-3 shadow-md rounded-lg p-2 bg-white">
-    <input
-      type="text"
-      value={location}
-      onChange={(e) => setLocation(e.target.value)}
-      placeholder="e.g., 'Thailand', 'Rome', 'Kyoto'"
-      className="flex-grow p-3 rounded-md border-transparent focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition duration-300 text-lg"
-    />
-    <button
-      type="submit"
-      disabled={loading}
-      className="bg-amber-600 text-white font-bold py-3 px-6 rounded-md shadow-lg hover:bg-amber-700 transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
-    >
-      {loading ? 'Exploring...' : 'Find Food'}
-    </button>
-  </form>
-)
+// --- HELPERS ---
+// --- GEMINI API CALL FUNCTION ---
+// Helper function for Gemini initialization
+// It calls Gemini via our backend, which handles the API key and request formatting. We use fetchWithRetry to add robustness to our API calls, especially for the image generation which can be more prone to rate limits and timeouts.
+const callGemini = async (prompt) => {
+  try {
+    const res = await fetchWithRetry(
+      `${API_BASE_URL}/api/get-guide`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt }),
+    });
 
-// --- UI COMPONENT: GuideCard ---
-// The main component for displaying the fetched culinary guide.
-// It conditionally renders the image, placeholder, and all text content.
-// Responsive classes (sm:, md:) ensure it adapts to different screen sizes.
-const GuideCard = ({ guide, imageUrl, isImageLoading }) => (
-  <div className="bg-white rounded-xl shadow-2xl mt-8 animate-fade-in border border-gray-200 overflow-hidden">
-    {/* Conditionally render the image or its placeholder based on the loading state */}
-    {isImageLoading && <ImagePlaceholder />}
-    {imageUrl && <img src={imageUrl} alt={guide.mustTryDishes[0]?.name || guide.locationName} className="w-full h-48 sm:h-56 md:h-64 object-cover" />}
+    const data = await res.json();
 
-    <div className="p-6 md:p-8 space-y-6">
-      <h2 className="text-3xl md:text-4xl font-bold text-amber-800 text-center border-b pb-4">
-        {guide.locationName}
-      </h2>
+    if (!data || typeof data !== "object") {
+      throw new Error("UNEXPECTED_RESPONSE_SHAPE");
+    }
 
-      <div className="space-y-4">
-        <h3 className="text-xl md:text-2xl font-semibold text-stone-700">Must-Try Dishes 🍲</h3>
-        <ul className="list-disc list-inside space-y-3 pl-2">
-          {guide.mustTryDishes.map((dish) => (
-            <li key={dish.name} className="text-stone-600">
-              <strong className="text-stone-800">{dish.name}:</strong> {dish.description}
-            </li>
-          ))}
-        </ul>
-      </div>
+    return data;
+  } catch (err) {
+    // Keep rich errors from backend (VALIDATION_ERROR, UPSTREAM_*, etc.)
+    if (err instanceof ApiError) throw err;
 
-      <div className="space-y-2 pt-4 border-t">
-        <h3 className="text-xl md:text-2xl font-semibold text-stone-700">Etiquette Tip 💡</h3>
-        <p className="text-stone-600">{guide.etiquetteTip}</p>
-      </div>
+    // Network failure / JSOn parse failure / unexpected response shape
+    throw err;
+  }
+};
 
-      <div className="space-y-2 pt-4 border-t">
-        <h3 className="text-xl md:text-2xl font-semibold text-stone-700">Where to Eat 🍴</h3>
-        <p className="text-stone-600">{guide.restaurantSuggestion}</p>
-      </div>
-    </div>
-  </div>
-)
+// --- PROMPT BUILDER FUNCTION ---
+// Helper function to build the Gemini prompt
+const buildPrompt = ({
+  location,
+}) => {
+
+  return `
+      Provide a mini culinary guide for ${location}. I need a list of 3-5 must-try dishes, one etiquette tip, a restaurant suggestion, and a photorealistic image generation prompt for the most iconic dish. Respond in valid JSON.
+      
+    `;
+};
+
 
 // --- MAIN APP COMPONENT ---
-// This is the core of the application, managing state and orchestrating API calls.
-
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY
-
 const App = () => {
+
+  // **** STATE VARIABLES ****
   // State for the user's search query
   const [location, setLocation] = useState('')
   // State to hold the structured culinary guide from the Gemini API
@@ -94,119 +73,195 @@ const App = () => {
 
   // State to manage the lifecycle of the AI-generated image
   const [imageUrl, setImageUrl] = useState(null)
-  const [isImageLoading, setIsImageLoading] = useState(false)
+  // const [isImageLoading, setIsImageLoading] = useState(false) // REFACTORED:
+  // We now have a more granular loading state for different parts of the UI, including image generation, so we replaced isImageLoading with loadingParts.image. This allows us to show loading indicators for specific sections (e.g., "Generating image...") without blocking the entire UI with a generic loading state.
 
-  // --- API FUNCTION 2: Generate Image ---
-  // This function is called *after* the text guide is received.
-  // It takes the image prompt from the first API call and makes a second call to Imagen 3.
-  const handleGenerateImage = async (imageGenPrompt) => {
-    setIsImageLoading(true)
-    setImageUrl(null)
+  // --- Components Loading state ---
+  const [loadingParts, setLoadingParts] = useState({
+    guide: false,
+    image: false,
+  });
 
-    const payload = {
-      instances: [{ prompt: imageGenPrompt }],
-      parameters: { sampleCount: 1 },
-    }
+  // --- Image Notice State ---
+  const [imageNotice, setImageNotice] = useState(null);
+
+  // --- HANDLER FUNCTION: Image Generation ---
+  // This function handles the image generation process. It is called after we successfully receive the guide data, using the image generation prompt provided by Gemini.
+  const handleGenerateImage = async (prompt) => {
+    setPartLoading("image", true);
+    setImageUrl(null);
+    setImageNotice(null);
+
+    // const payload = {
+    //   instances: [{ prompt: imageGenPrompt }],
+    //   parameters: { sampleCount: 1 },
+    // }
 
     try {
-      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3-flash:generateImage?key=${apiKey}`
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-      if (!response.ok) throw new Error(`Image generation failed with status ${response.status}`)
+      const response = await fetchWithRetry(
+        `${API_BASE_URL}/api/generate-image`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt }),
+        });
+      const data = await response.json();
 
-      const result = await response.json()
-      if (result.predictions && result.predictions.length > 0 && result.predictions[0].bytesBase64Encoded) {
-        // The image is returned as a base64 string, which we format into a data URL
-        const newImageUrl = `data:image/png;base64,${result.predictions[0].bytesBase64Encoded}`
-        setImageUrl(newImageUrl)
-      } else {
-        throw new Error('Invalid image response structure.')
+      const base64 = data.predictions?.[0]?.bytesBase64Encoded;
+      if (!base64) {
+        // Not fatal: image is optional and we can still show the guide data. But log it so we can investigate. 
+        console.warn("Image generation returned no image (possibly blocked). Payload:", data);
+        setImageNotice("Image isn’t available right now. Showing the guide without it.");
+        return null;
       }
-    } catch (err) {
-      console.error('Image generation error:', err)
-      // If image generation fails, we don't show a blocking error to the user.
-      // The text guide is still valuable on its own.
-    } finally {
-      setIsImageLoading(false)
-    }
-  }
 
-  // --- API FUNCTION 1: Get Culinary Guide ---
+      const imgUrl = `data:image/png;base64,${base64}`;
+      setImageUrl(imgUrl);
+      return imgUrl;
+    } catch (err) {
+      if (err instanceof ApiError) {
+        console.warn(
+          'Image generation failed:',
+          err.status,
+          err.code,
+          err.message,
+          err.details
+        );
+
+        //  If rate-limited or upstream issue, show a user-friendly hint:
+        if (err.status === 429) {
+          setImageNotice("Image generation is rate-limited right now. Try again in a minute.");
+        } else {
+          setImageNotice("Image isn’t available right now. Showing the guide without it.");
+        }
+      } else {
+        console.warn('Image generation failed:', err);
+        setImageNotice("Image isn’t available right now. Showing the guide without it.");
+      }
+      return null;
+    } finally {
+      setPartLoading("image", false);
+    }
+  };
+
+
+  // --- HANDLER FUNCTION: Get Culinary Guide ---
   // This is the primary function triggered by the user's search.
   // It calls the Gemini API to get the structured text guide.
   const handleGetGuide = async (e) => {
-    e.preventDefault()
+    e.preventDefault();
+
+    // Basic input validation
     if (!location) {
-      setError('Please enter a country or city.')
-      return
+      setError('Please enter a country or city.');
+      return;
     }
 
     // Reset state for a new search
-    setLoading(true)
-    setError(null)
-    setGuide(null)
-    setImageUrl(null)
-
-    // The prompt is carefully worded to ask for all the pieces of information we need.
-    const prompt = `Provide a mini culinary guide for ${location}. I need a list of 3-5 must-try dishes, one etiquette tip, a restaurant suggestion, and a photorealistic image generation prompt for the most iconic dish. Respond in valid JSON.`
-
-    // The schema enforces a strict JSON output, making the AI's response reliable and predictable.
-    const schema = {
-      type: 'OBJECT',
-      properties: {
-        locationName: { type: 'STRING' },
-        mustTryDishes: {
-          type: 'ARRAY',
-          items: {
-            type: 'OBJECT',
-            properties: { name: { type: 'STRING' }, description: { type: 'STRING' } },
-            required: ['name', 'description'],
-          },
-        },
-        etiquetteTip: { type: 'STRING' },
-        restaurantSuggestion: { type: 'STRING' },
-        imageGenPrompt: { type: 'STRING', description: 'A detailed, photorealistic prompt for an image generation model.' },
-      },
-      required: ['locationName', 'mustTryDishes', 'etiquetteTip', 'restaurantSuggestion', 'imageGenPrompt'],
-    }
-
-    const payload = {
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { responseMimeType: 'application/json', responseSchema: schema },
-    }
+    setLoading(true);
+    setError(null);
+    setGuide(null);
+    setImageUrl(null);
+    setImageNotice(null);
 
     try {
-      if (!apiKey) throw new Error('API Key is missing.')
-      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-      if (!response.ok) throw new Error(`API request failed with status ${response.status}`)
+      // Clean and build the prompt
+      const cleanedLocation = location.trim();
+      const prompt = buildPrompt({ location: cleanedLocation });
 
-      const result = await response.json()
-      const jsonResponseText = result.candidates?.[0]?.content?.parts?.[0]?.text
-      if (!jsonResponseText) throw new Error('Invalid response structure from AI.')
+      setPartLoading("guide", true);
+      // Call the Gemini API to get the guide data
+      const guideData = await callGemini(prompt);
+      console.log("Received guide data from Gemini:", guideData);
+      setGuide(guideData);
 
-      const parsedGuide = JSON.parse(jsonResponseText)
-      setGuide(parsedGuide)
+      // --- IMAGE GENERATION CHAINING ---
+      const imageGenPrompt = buildImagePrompt({ location: cleanedLocation });
 
-      // --- Chaining API Calls ---
-      // If the guide is fetched successfully, we immediately trigger the image generation function.
-      if (parsedGuide.imageGenPrompt) {
-        handleGenerateImage(parsedGuide.imageGenPrompt)
-      }
+      await handleGenerateImage(imageGenPrompt);
+
     } catch (err) {
-      console.error(err)
-      setError('Could not fetch the guide. The Culinary Compass is recalibrating!')
+      console.error("Frontend error in handleGetGuide:", err);
+      setError(getUserMessage(err));
     } finally {
-      setLoading(false)
+      setPartLoading("guide", false);
+      setLoading(false);
     }
-  }
+  };
+
+
+
+  // // The prompt is carefully worded to ask for all the pieces of information we need.
+  // const prompt = `Provide a mini culinary guide for ${location}. I need a list of 3-5 must-try dishes, one etiquette tip, a restaurant suggestion, and a photorealistic image generation prompt for the most iconic dish. Respond in valid JSON.`
+
+  // // The schema enforces a strict JSON output, making the AI's response reliable and predictable.
+  // const schema = {
+  //   type: 'OBJECT',
+  //   properties: {
+  //     locationName: { type: 'STRING' },
+  //     mustTryDishes: {
+  //       type: 'ARRAY',
+  //       items: {
+  //         type: 'OBJECT',
+  //         properties: { name: { type: 'STRING' }, description: { type: 'STRING' } },
+  //         required: ['name', 'description'],
+  //       },
+  //     },
+  //     etiquetteTip: { type: 'STRING' },
+  //     restaurantSuggestion: { type: 'STRING' },
+  //     imageGenPrompt: { type: 'STRING', description: 'A detailed, photorealistic prompt for an image generation model.' },
+  //   },
+  //   required: ['locationName', 'mustTryDishes', 'etiquetteTip', 'restaurantSuggestion', 'imageGenPrompt'],
+  // }
+
+  // const payload = {
+  //   contents: [{ parts: [{ text: prompt }] }],
+  //   generationConfig: { responseMimeType: 'application/json', responseSchema: schema },
+  // }
+
+  // try {
+  //   if (!apiKey) throw new Error('API Key is missing.')
+  //   const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+  //   const response = await fetch(apiUrl, {
+  //     method: 'POST',
+  //     headers: { 'Content-Type': 'application/json' },
+  //     body: JSON.stringify(payload),
+  //   })
+  //   if (!response.ok) throw new Error(`API request failed with status ${response.status}`)
+
+  //   const result = await response.json()
+  //   const jsonResponseText = result.candidates?.[0]?.content?.parts?.[0]?.text
+  //   if (!jsonResponseText) throw new Error('Invalid response structure from AI.')
+
+  //   const parsedGuide = JSON.parse(jsonResponseText)
+  //   setGuide(parsedGuide)
+
+  //   // --- Chaining API Calls ---
+  //   // If the guide is fetched successfully, we immediately trigger the image generation function.
+  //   if (parsedGuide.imageGenPrompt) {
+  //     handleGenerateImage(parsedGuide.imageGenPrompt)
+  //   }
+  // } catch (err) {
+  //   console.error(err)
+  //   setError('Could not fetch the guide. The Culinary Compass is recalibrating!')
+  // } finally {
+  //   setLoading(false)
+  // }
+
+
+
+
+  // PARTS LOADING STATE HELPER: Helper function to set loading state for different parts of the UI
+  const setPartLoading = (part, value) => {
+    setLoadingParts((prev) => ({ ...prev, [part]: value }));
+  };
+
+  // LOADING LABEL HELPER: Helper function to get loading label based on which part is loading
+  const getLoadingLabel =
+    loadingParts.guide ? "Generating your culinary guide..." :
+      loadingParts.image ? "Generating the image of the iconic dish..." :
+        "Loading...";
+
 
   return (
     <div className="min-h-screen bg-amber-50 font-serif p-4 sm:p-6 md:p-8">
@@ -227,10 +282,21 @@ const App = () => {
             </div>
           )}
 
-          {loading && <LoadingSpinner />}
+          {loading && (
+            <>
+              <LoadingSpinner />
+              <p className="text-center text-stone-600 mt-2">{getLoadingLabel}</p>
+            </>
+          )}
+
+          {imageNotice && (
+            <div className="bg-amber-100 border border-amber-300 text-amber-800 px-4 py-3 rounded-lg relative mt-6 text-center">
+              {imageNotice}
+            </div>
+          )}
 
           {/* The GuideCard is only rendered when the 'guide' state has data */}
-          {guide && <GuideCard guide={guide} imageUrl={imageUrl} isImageLoading={isImageLoading} />}
+          {guide && <GuideCard guide={guide} imageUrl={imageUrl} isImageLoading={loadingParts.image} />}
         </main>
       </div>
     </div>

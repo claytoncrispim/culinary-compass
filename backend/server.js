@@ -42,8 +42,7 @@ app.post("/api/generate-image", async (req, res) => {
         let authOptions;
 
         if (process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
-            // Production credential from environment variable at Render.com
-            // TODO: Create service and copy backend/service-account.json content into GOOGLE_SERVICE_ACCOUNT_JSON env var on Render.com
+            // Production credential from environment variable at Render.com            
 
             let serviceAccount;
             try {
