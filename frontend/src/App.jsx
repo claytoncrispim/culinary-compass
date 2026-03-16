@@ -109,7 +109,7 @@ const App = () => {
     }
 
     try {
-      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3-flash:generateImage?key=${apiKey}`
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
