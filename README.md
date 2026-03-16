@@ -6,7 +6,7 @@
 An intelligent web application that serves as a personal guide to the world's culinary landscape. Powered by Google's Gemini and Imagen 3 AI models, users can enter any city or country and instantly receive a curated food guide, complete with an AI-generated image of a signature dish.
 
 ## 📷 Screenshot
-![A screenshot showing a culinary guide for a location, including must-try dishes and an AI-generated image.](src/assets/screenshot.png)
+![A screenshot showing a culinary guide for a location, including must-try dishes and an AI-generated image.](frontend/src/assets/screenshot.png)
 
 
 
