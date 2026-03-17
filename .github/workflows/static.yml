@@ -3,6 +3,7 @@ name: Deploy static content to Pages
 on:
   push:
     branches: ["main"]
+
   workflow_dispatch:
 
 permissions:
@@ -46,7 +47,6 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: frontend/dist
-
   deploy:
     environment:
       name: github-pages
