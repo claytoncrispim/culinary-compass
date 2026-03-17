@@ -7,7 +7,7 @@ const SearchBar = ({ location, setLocation, handleGetGuide, loading }) => (
       value={location}
       onChange={(e) => setLocation(e.target.value)}
       placeholder="e.g., 'Thailand', 'Rome', 'Kyoto'"
-      className="flex-grow p-3 rounded-md border-transparent focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition duration-300 text-lg"
+      className="flex-grow p-3 rounded-md border border-transparent focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition duration-300 text-lg"
     />
     <button
       type="submit"

@@ -174,6 +174,7 @@ const App = () => {
       const guideData = await callGemini(prompt);
       console.log("Received guide data from Gemini:", guideData);
       setGuide(guideData);
+      setPartLoading("guide", false);
 
       // --- IMAGE GENERATION CHAINING ---
       const imageGenPrompt = buildImagePrompt({ location: cleanedLocation });
@@ -264,7 +265,7 @@ const App = () => {
 
 
   return (
-    <div className="min-h-screen bg-amber-50 font-serif p-4 sm:p-6 md:p-8">
+    <div className="min-h-screen p-4 sm:p-6 md:p-8">
       <div className="container mx-auto max-w-2xl">
         <header className="text-center my-6 md:my-8">
           <h1 className="text-4xl md:text-5xl font-bold text-stone-800">
@@ -284,6 +285,10 @@ const App = () => {
 
           {loading && (
             <>
+            {/* Loading state for different parts of the UI
+              "guide" -> Generating your culinary guide...
+              "image" -> Generating the image of the iconic dish...
+            */}
               <LoadingSpinner />
               <p className="text-center text-stone-600 mt-2">{getLoadingLabel}</p>
             </>
@@ -298,6 +303,13 @@ const App = () => {
           {/* The GuideCard is only rendered when the 'guide' state has data */}
           {guide && <GuideCard guide={guide} imageUrl={imageUrl} isImageLoading={loadingParts.image} />}
         </main>
+
+        {/* Footer and Credits */}
+        <footer className="mt-10 text-center text-[11px] text-stone-700">
+            <p>
+                Built by <a href="https://www.claytoncrispim.com" target="_blank" rel="noopener noreferrer" className="underline">Clayton Crispim </a> · Powered by Gemini & Imagen
+            </p>
+        </footer>
       </div>
     </div>
   )
