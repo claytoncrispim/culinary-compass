@@ -19,7 +19,7 @@ const GuideCard = ({ guide, imageUrl, isImageLoading }) => (
         <h3 className="text-xl md:text-2xl font-semibold text-stone-700">Must-Try Dishes 🍲</h3>
         <ul className="list-disc list-inside space-y-3 pl-2">
           {guide.mustTryDishes.map((dish) => (
-            <li key={dish.name} className="text-stone-600">
+            <li key={dish.name} className="text-stone-600 break-words">
               <strong className="text-stone-800">{dish.name}:</strong> {dish.description}
             </li>
           ))}
