@@ -265,13 +265,13 @@ const App = () => {
 
 
   return (
-    <div className="min-h-screen p-4 sm:p-6 md:p-8">
-      <div className="container mx-auto max-w-2xl">
+    <div className="min-h-screen p-3 sm:p-6 md:p-8 overflow-x-hidden">
+      <div className="mx-auto w-full max-w-2xl">
         <header className="text-center my-6 md:my-8">
-          <h1 className="text-4xl md:text-5xl font-bold text-stone-800">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-stone-800 leading-tight break-words">
             Culinary Compass 🧭
           </h1>
-          <p className="text-stone-600 mt-2 text-lg">Your AI guide to the world's flavors.</p>
+          <p className="text-stone-600 mt-2 text-base sm:text-lg px-1">Your AI guide to the world's flavors.</p>
         </header>
 
         <main>
@@ -285,7 +285,7 @@ const App = () => {
 
           {loading && (
             <>
-            {/* Loading state for different parts of the UI
+              {/* Loading state for different parts of the UI
               "guide" -> Generating your culinary guide...
               "image" -> Generating the image of the iconic dish...
             */}
@@ -305,10 +305,10 @@ const App = () => {
         </main>
 
         {/* Footer and Credits */}
-        <footer className="mt-10 text-center text-[11px] text-stone-700">
-            <p>
-                Built by <a href="https://www.claytoncrispim.com" target="_blank" rel="noopener noreferrer" className="underline">Clayton Crispim </a> · Powered by Gemini & Imagen
-            </p>
+        <footer className="mt-10 text-center text-[10px] sm:text-[11px] text-stone-700 px-2 break-words">
+          <p>
+            Built by <a href="https://www.claytoncrispim.com" target="_blank" rel="noopener noreferrer" className="underline">Clayton Crispim </a> · Powered by Gemini & Imagen
+          </p>
         </footer>
       </div>
     </div>
